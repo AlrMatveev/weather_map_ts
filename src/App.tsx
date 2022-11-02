@@ -1,26 +1,20 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { FC } from "react";
+import { useAppSelector } from "./hooks";
+import Ymap from "./components/Ymap";
+import Location from "./components/Location";
 
-function App() {
+const App: FC = () => {
+  const location = useAppSelector((state) => state.weather.location);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <>
+      <Location status={location.status === "pending"} />
+      <Ymap
+        startCoords={location.coords}
+        status={location.status === "response"}
+      />
+    </>
   );
-}
+};
 
 export default App;
