@@ -44,13 +44,11 @@ export const fetchWeather = createAsyncThunk<fetchWeather, number[], {}>(
 );
 
 type weather = {
-  location: { coords: number[]; status: string };
   data: { temp: number; humidity: number; speed: number } | null;
   status: string;
 };
 
 const initialState: weather = {
-  location: { coords: [55.7443796, 38.0082729], status: "pending" },
   data: null,
   status: "loading",
 };
@@ -58,12 +56,7 @@ const initialState: weather = {
 export const weatherSlice = createSlice({
   name: "weather",
   initialState: initialState,
-  reducers: {
-    setLocation: (state, action: PayloadAction<number[] | null>) => {
-      state.location.status = "response";
-      if (action.payload) state.location.coords = action.payload;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchWeather.pending, (state) => {
@@ -85,7 +78,5 @@ export const weatherSlice = createSlice({
       });
   },
 });
-
-export const { setLocation } = weatherSlice.actions;
 
 export default weatherSlice.reducer;
