@@ -2,21 +2,16 @@ import { FC } from "react";
 import { useState, useEffect, useRef } from "react";
 import { useAppDispatch } from "../hooks";
 import { fetchWeather } from "../redux/weatherSlice";
-import { CSSTransition } from "react-transition-group";
 import Loader from "./Loader";
 import Weather from "./Weather";
+import Spectacular from "../hoc/Spectacular";
 
-type YmapProps = {
-  startCoords: number[];
-  status: boolean;
-};
-
-const Ymap: FC<YmapProps> = ({ startCoords, status }) => {
+const Ymap: FC = () => {
   const [size, resize] = useState<number[]>([
     window.innerWidth,
     window.innerHeight,
   ]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [load, setLoad] = useState<boolean>(true);
 
   const scriptRef = useRef<HTMLScriptElement | null>(null);
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -24,20 +19,27 @@ const Ymap: FC<YmapProps> = ({ startCoords, status }) => {
 
   const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    if (status) {
-      loadScript(
-        "https://api-maps.yandex.ru/2.1/?apikey=94416829-d281-4d3e-b355-d2d6104e163a&lang=ru_RU",
-        init
-      );
-    }
-  }, [status]);
+  const win: any = window;
+
+  const zoom: number = 6;
 
   useEffect(() => {
+    //гружу скрипт API Yandex Карт
+    loadScript(
+      "https://api-maps.yandex.ru/2.1/?apikey=94416829-d281-4d3e-b355-d2d6104e163a&lang=ru_RU",
+      init
+    );
+
     window.addEventListener("resize", () => {
       resize([window.innerWidth, window.innerHeight]);
     });
-  }, []);
+  }, []); // eslint-disable-line
+
+  const optionsLoaction = {
+    enableHighAccuracy: true,
+    timeout: 50000,
+    maximumAge: 0,
+  };
 
   function loadScript(src: string, callback: () => void): void {
     if (scriptRef.current) return;
@@ -49,50 +51,54 @@ const Ymap: FC<YmapProps> = ({ startCoords, status }) => {
   }
 
   function init(): void {
-    if (mapRef.current) {
-      mapRef.current.innerHTML = "";
-      const win: any = window;
-      win.ymaps.ready((): void => {
-        setLoading(false);
-        var map = new win.ymaps.Map(mapRef.current, {
-          center: startCoords,
-          zoom: 8,
-          type: "yandex#hybrid",
-          controls: [],
-        });
+    win.ymaps.ready((): void => {
+      //узнаю пестоложение клиента
+      navigator.geolocation.getCurrentPosition(success, error, optionsLoaction);
 
-        // Отключаем ненужные методы
-        map.behaviors.disable("rightMouseButtonMagnifier");
-        map.behaviors.disable("dblClickZoom");
+      //перемещаю карту по координатам клиента
+      function success(pos: any): void {
+        map.setCenter([pos.coords.latitude, pos.coords.longitude], zoom);
+      }
 
-        dispatch(fetchWeather(map.getCenter()));
+      function error(err: any): void {
+        console.log(err);
+      }
 
-        map.events.add(
-          ["boundschange"],
-          (): void => {
-            dispatch(fetchWeather(map.getCenter()));
-          },
-          map
-        );
+      // убираем прелоадер
+      setLoad(false);
+
+      var map = new win.ymaps.Map(mapRef.current, {
+        center: [55.755864, 37.617698],
+        zoom: zoom,
+        type: "yandex#hybrid",
+        controls: [],
       });
-    }
+
+      // Отключаем ненужные методы
+      map.behaviors.disable("rightMouseButtonMagnifier");
+      map.behaviors.disable("dblClickZoom");
+
+      dispatch(fetchWeather(map.getCenter()));
+
+      map.events.add(
+        ["boundschange"],
+        (): void => {
+          dispatch(fetchWeather(map.getCenter()));
+        },
+        map
+      );
+    });
   }
 
   return (
     <>
-      <CSSTransition
-        nodeRef={loadingRef}
-        in={loading}
-        timeout={1000}
-        classNames="map_loading"
-        unmountOnExit
-      >
+      <Spectacular status={load} node={loadingRef}>
         <div
           ref={loadingRef}
           style={{
             position: "absolute",
-            width: window.innerWidth,
-            height: window.innerHeight,
+            width: size[0],
+            height: size[1],
             backgroundColor: "black",
             left: 0,
             top: 0,
@@ -101,17 +107,10 @@ const Ymap: FC<YmapProps> = ({ startCoords, status }) => {
         >
           <Loader />
         </div>
-      </CSSTransition>
-      <CSSTransition
-        nodeRef={mapRef}
-        in={status}
-        timeout={3000}
-        classNames="map"
-        mountOnEnter
-      >
-        <div ref={mapRef} style={{ width: size[0], height: size[1] }}></div>
-      </CSSTransition>
-      {status && !loading && <Weather />}
+      </Spectacular>
+
+      <div ref={mapRef} style={{ width: size[0], height: size[1] }}></div>
+      <Weather />
     </>
   );
 };
